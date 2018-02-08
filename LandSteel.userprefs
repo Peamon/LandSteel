@@ -1,0 +1,17 @@
+﻿<Properties StartupItem="Assembly-CSharp.csproj">
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" PreferredExecutionTarget="Unity.Instance.Unity Editor" />
+  <MonoDevelop.Ide.Workbench ActiveDocument="Assets/Generator/Chunk/ChunkCache.cs">
+    <Files>
+      <File FileName="Assets/tests/WorldTerrain.cs" Line="32" Column="7" />
+      <File FileName="Assets/Generator/Chunk/TerrainChunkGenerator.cs" Line="123" Column="4" />
+      <File FileName="Assets/Generator/Chunk/TerrainQuadTree.cs" Line="27" Column="12" />
+      <File FileName="Assets/Generator/Chunk/TerrainChunk.cs" Line="61" Column="3" />
+      <File FileName="Assets/Generator/Chunk/ChunkCache.cs" Line="6" Column="27" />
+      <File FileName="Assets/Generator/Standard/Vec2I.cs" Line="38" Column="1" />
+    </Files>
+  </MonoDevelop.Ide.Workbench>
+  <MonoDevelop.Ide.DebuggingService.Breakpoints>
+    <BreakpointStore />
+  </MonoDevelop.Ide.DebuggingService.Breakpoints>
+  <MonoDevelop.Ide.DebuggingService.PinnedWatches />
+</Properties>

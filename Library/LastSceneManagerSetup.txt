@@ -1,0 +1,10 @@
+sceneSetups:
+- path: Assets/tests/terrain.unity
+  isLoaded: 1
+  isActive: 1
+- path: Assets/tests/carte.unity
+  isLoaded: 0
+  isActive: 0
+- path: Assets/tests/menu.unity
+  isLoaded: 0
+  isActive: 0
