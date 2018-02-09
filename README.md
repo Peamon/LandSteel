@@ -8,7 +8,7 @@ Try to start a procedural planet as wide as earth. Starting code for Unity is ht
 # What's need to be done
 - lat/lon clamping to have a finite number of planes touching the earth's surface
 - Using a QuadTree visitor (instead of chunk Cache) to avoid 25% point calculation when split and 100% on fusion and terrain chunck hole while ethan walk.
-- Connect Terrain from different quadtree level (not native in Unity...)
+- Connect Terrain from different quadtree level (not native in Unity...), in first step adpapt border height map to match neighbor (smaller chunck repeat height value of the parent on border)
 - Adapt terrain chunks height locally to have a better resolution (will it suppress the flickering ?)
 - Work on terrain texture
 - Add sea at level 0
