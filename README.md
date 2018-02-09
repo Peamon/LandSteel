@@ -2,13 +2,13 @@
 Try to start a procedural planet as wide as earth. Starting code for Unity is http://code-phi.com/infinite-terrain-generation-in-unity-3d. Code for planet terrain generation is adapted from http://libnoise.sourceforge.net/examples/complexplanet/index.html.
 
 # What's have been done
-- Calculating height of terrain with a distance to a virtual plane touching the earth sphere surface at a specific lat/lon
+- Calculating height of terrain with a distance to a virtual plane touching the earth's surface at a specific lat/lon
 - Using a QuadTree to draw terrain from First person camera to far distance (50Km)
 
 # What's need to be done
-- clamping lat/lon to have a finit number of plane touching the earth surface
-- Using a QuadTree visitor (instead of chunk Cache) to avoid 25% point calculation when split and 100% on fusion and terrain chunck hole.
-- Connect Terrain from quadtree different level (not native in Unity...)
+- lat/lon clamping to have a finite number of planes touching the earth's surface
+- Using a QuadTree visitor (instead of chunk Cache) to avoid 25% point calculation when split and 100% on fusion and terrain chunck hole while ethan walk.
+- Connect Terrain from different quadtree level (not native in Unity...)
 - Adapt terrain chunks height locally to have a better resolution (will it suppress the flickering ?)
 - Work on terrain texture
 - Add sea at level 0
