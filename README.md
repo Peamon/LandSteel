@@ -12,6 +12,7 @@ Try to start a procedural planet as wide as earth. Starting code for Unity is ht
 - Connect Terrain from quadtree different level (not native in Unity...)
 - Adapt terrain chunks height locally to have a better resolution (will it suppress the flickering ?)
 - Work on terrain texture
+- Add sea at level 0
 - Manage the rivers (see the last noise module)
 
 # What idea for the future
