@@ -3,6 +3,7 @@ Try to start a procedural planet as wide as earth. Starting code for Unity is ht
 
 # What's have been done
 - Calculating height of terrain with a distance to a virtual plane touching the earth sphere surface at a specific lat/lon
+![surface on eath sphere](https://github.com/Peamon/LandSteel/raw/master/Capture%20d%E2%80%99%C3%A9cran%202017-06-11%20%C3%A0%2016.16.39.png)
 - Using a QuadTree to draw terrain from First person camera to far distance (50Km)
 
 # What's need to be done
@@ -22,3 +23,10 @@ Try to start a procedural planet as wide as earth. Starting code for Unity is ht
 # And what can we do with this ?
 A new world of adventure. Whe just have to write an adventure in a already existing world.
 An RPG engine depending of Rpg type is needed.
+
+# Screenshots
+At Ethan level (in game)
+
+Look carefully you can see Ethan
+
+Now whe cannot see him anymore
