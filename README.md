@@ -13,6 +13,8 @@ Try to start a procedural planet as wide as earth. Starting code for Unity is ht
 - Work on terrain texture
 - Add sea at level 0
 - Manage the rivers (see the last noise module)
+- Reactivate map and full word view, add a click on map/full world to teleport ethan
+- Create a loading screen with maps and Noise Seed parameters to choose the world
 
 # What idea for the future
 - Use a noise module (perlin or more) to generate weather and weight it with season (day of the year)
