@@ -16,23 +16,18 @@ public class WorldTerrain : MonoBehaviour {
 	public TerrainChunkGenerator Generator;
 
 	public WorldTerrain() {
-		Debug.Log("WorldTerrain()");
+		//Debug.Log("WorldTerrain()");
 	}
 
 	// Use this for initialization
 	void Start () {
-		Debug.Log("WorldTerrain::Awake()");
+		//Debug.Log("WorldTerrain::Awake()");
 		Generator.Set (seed, earthFactor, Radius, true, 3000);
 	}
 
 	// Update is called once per frame
 	void Update () {
 		Vector3 worldPos = Character.transform.position;
-		Vector2i playerChunkPosition = Generator.GetChunkPosition(worldPos);
-		if (!playerChunkPosition.Equals(PreviousPlayerChunkPosition))
-		{
-			Generator.UpdateTerrain(worldPos, Radius);
-			PreviousPlayerChunkPosition = playerChunkPosition;
-		}
+		Generator.UpdateTerrain(worldPos, Radius);
 	}
 }

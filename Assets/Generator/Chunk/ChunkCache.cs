@@ -13,7 +13,9 @@ namespace TerrainGenerator
 
         private Dictionary<Vector2i, TerrainChunk> ChunksBeingGenerated { get; set; }
 
-        private Dictionary<Vector2i, TerrainChunk> LoadedChunks { get; set; }
+		private Dictionary<Vector2i, TerrainChunk> ChunksGenerated { get; set; }
+
+		private Dictionary<Vector2i, TerrainChunk> LoadedChunks { get; set; }
 
         private HashSet<Vector2i> ChunksToRemove { get; set; }
 
@@ -23,16 +25,16 @@ namespace TerrainGenerator
         {
             RequestedChunks = new Dictionary<Vector2i, TerrainChunk>();
             ChunksBeingGenerated = new Dictionary<Vector2i, TerrainChunk>();
+			ChunksGenerated = new Dictionary<Vector2i, TerrainChunk>();
             LoadedChunks = new Dictionary<Vector2i, TerrainChunk>();
             ChunksToRemove = new HashSet<Vector2i>();
         }
 
         public void Update()
         {
-            TryToDeleteQueuedChunks();
-
             GenerateHeightmapForAvailableChunks();
             CreateTerrainForReadyChunks();
+			TryToDeleteQueuedChunks();
         }
 
         public void AddNewChunk(TerrainChunk chunk)
@@ -49,10 +51,7 @@ namespace TerrainGenerator
 
 		public bool ChunkCanBeAdded(Vector2i key)
         {
-            return
-                !(RequestedChunks.ContainsKey(key)
-                || ChunksBeingGenerated.ContainsKey(key)
-                || LoadedChunks.ContainsKey(key));
+			return !ChunkCanBeRemoved (key);
         }
 
 		public bool ChunkCanBeRemoved(Vector2i key)
@@ -60,15 +59,16 @@ namespace TerrainGenerator
             return
                 RequestedChunks.ContainsKey(key)
                 || ChunksBeingGenerated.ContainsKey(key)
+				|| ChunksGenerated.ContainsKey(key)
                 || LoadedChunks.ContainsKey(key);
         }
 
-        public bool IsChunkGenerated(Vector2i chunkPosition)
+		public bool IsChunkLoaded(Vector2i chunkPosition)
         {
-            return GetGeneratedChunk(chunkPosition) != null;
+			return GetLoadedChunk(chunkPosition) != null;
         }
 
-        public TerrainChunk GetGeneratedChunk(Vector2i chunkPosition)
+        public TerrainChunk GetLoadedChunk(Vector2i chunkPosition)
         {
             if (LoadedChunks.ContainsKey(chunkPosition))
                 return LoadedChunks[chunkPosition];
@@ -76,9 +76,9 @@ namespace TerrainGenerator
             return null;
         }
 
-		public List<TerrainChunk> GetGeneratedChunks()
+		public List<TerrainChunk> GetLoadedChunks()
         {
-			return LoadedChunks.Values.ToList();
+			return LoadedChunks.Values.ToList ();
         }
 
         private void GenerateHeightmapForAvailableChunks()
@@ -102,31 +102,40 @@ namespace TerrainGenerator
         {
             var anyTerrainCreated = false;
 
-            var chunks = ChunksBeingGenerated.ToList();
-            foreach (var chunk in chunks)
-            {
-                if (chunk.Value.IsHeightmapReady())
-                {
-                    ChunksBeingGenerated.Remove(chunk.Key);
-                    LoadedChunks.Add(chunk.Key, chunk.Value);
+			{
+	            var chunks = ChunksBeingGenerated.ToList();
+				foreach (var chunk in chunks) {
+					if (chunk.Value.IsHeightmapReady ()) {
+						ChunksBeingGenerated.Remove(chunk.Key);
+						ChunksGenerated.Add (chunk.Key, chunk.Value);
+					}
+				}
+			}
+			{
+				var chunks = ChunksGenerated.ToList ();
+				foreach (var chunk in chunks) {
+					var parent = chunk.Value.GetParent ();
+					if (parent == null || parent.CanBeRemoved ()) {
+						LoadedChunks.Add (chunk.Key, chunk.Value);
+						ChunksGenerated.Remove (chunk.Key);
 
-                    chunk.Value.CreateTerrain();
+						chunk.Value.CreateTerrain ();
 
-                    anyTerrainCreated = true;
-                    if (OnChunkGenerated != null)
-                        OnChunkGenerated.Invoke(ChunksBeingGenerated.Count);
+						anyTerrainCreated = true;
+						if (OnChunkGenerated != null)
+							OnChunkGenerated.Invoke (ChunksGenerated.Count);
 
-                    SetChunkNeighborhood(chunk.Value);
-                }
-            }
-
+						SetChunkNeighborhood (chunk.Value);
+					}
+				}
+			}
             if (anyTerrainCreated)
                 UpdateAllChunkNeighbors();
         }
 
         private void TryToDeleteQueuedChunks()
         {
-            var chunksToRemove = ChunksToRemove.ToList();
+			var chunksToRemove = ChunksToRemove.ToList();
             foreach (var chunkPosition in chunksToRemove)
             {
                 if (RequestedChunks.ContainsKey(chunkPosition))
@@ -134,14 +143,26 @@ namespace TerrainGenerator
                     RequestedChunks.Remove(chunkPosition);
                     ChunksToRemove.Remove(chunkPosition);
                 }
-                else if (LoadedChunks.ContainsKey(chunkPosition))
+				else if (ChunksGenerated.ContainsKey(chunkPosition))
                 {
-                    var chunk = LoadedChunks[chunkPosition];
-                    chunk.Remove();
+					var chunk = ChunksGenerated[chunkPosition];
+					if (chunk.CanBeRemoved ()) {
+						chunk.Remove ();
 
-                    LoadedChunks.Remove(chunkPosition);
-                    ChunksToRemove.Remove(chunkPosition);
+						ChunksGenerated.Remove (chunkPosition);
+						ChunksToRemove.Remove (chunkPosition);
+					}
                 }
+				else if (LoadedChunks.ContainsKey(chunkPosition))
+				{
+					var chunk = LoadedChunks[chunkPosition];
+					if (chunk.CanBeRemoved ()) {
+						chunk.Remove ();
+
+						LoadedChunks.Remove (chunkPosition);
+						ChunksToRemove.Remove (chunkPosition);
+					}
+				}
                 else if (!ChunksBeingGenerated.ContainsKey(chunkPosition))
                     ChunksToRemove.Remove(chunkPosition);
             }

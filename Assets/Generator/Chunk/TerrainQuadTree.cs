@@ -5,34 +5,27 @@ using UnityEngine;
 
 namespace TerrainGenerator
 {
-	public interface Ready {
+	public interface TQTReady {
 		bool IsReady();
+		void Delete();
 	}
 
-	class DescComparer<T> : IComparer<T>
-	{
-		public int Compare(T x, T y)
-		{
-			return Comparer<T>.Default.Compare(y, x);
-		}
-	}
-
-	public class TerrainQuadTreeNode<T> where T : Ready
+	public class TerrainQuadTreeNode<T> where T : TQTReady
 	{
 		public int X { get; set; }
 		public int Y { get; set; }
 		public int SZ { get; set; }
-		private int nbfils { get; set; }
 		private TerrainQuadTree<T>.CreateTerrainQuadTreeNodeElement creator;
 		public T obj { get; set; }
 
-		private TerrainQuadTreeNode<T> TL { get; set; }
-		private TerrainQuadTreeNode<T> TR { get; set; }
-		private TerrainQuadTreeNode<T> BL { get; set; }
-		private TerrainQuadTreeNode<T> BR { get; set; }
+		public TerrainQuadTreeNode<T> TL { get; set; }
+		public TerrainQuadTreeNode<T> TR { get; set; }
+		public TerrainQuadTreeNode<T> BL { get; set; }
+		public TerrainQuadTreeNode<T> BR { get; set; }
+		public TerrainQuadTreeNode<T> parent { get; set; }
 		private bool Splitted { get; set; }
 
-		public TerrainQuadTreeNode (int x, int y, int sz, TerrainQuadTree<T>.CreateTerrainQuadTreeNodeElement c)
+		public TerrainQuadTreeNode (int x, int y, int sz, TerrainQuadTreeNode<T> p, TerrainQuadTree<T>.CreateTerrainQuadTreeNodeElement c)
 		{
 			X = x;
 			Y = y;
@@ -40,49 +33,76 @@ namespace TerrainGenerator
 			Splitted = false;
 			creator = c;
 			obj = creator (this);
-			nbfils = 0;
+			parent = p;
 		}
 
-		private void split() {
-			Debug.Log ("split() " + X + " " + Y + " " + SZ);
+		private bool split() {
 			if (!Splitted && SZ > 1) {
-				TL = new TerrainQuadTreeNode<T> (X, Y, SZ / 2, creator);
-				TR = new TerrainQuadTreeNode<T> (X + SZ / 2, Y, SZ / 2, creator);
-				BL = new TerrainQuadTreeNode<T> (X, Y + SZ / 2, SZ / 2, creator);
-				BR = new TerrainQuadTreeNode<T> (X + SZ / 2, Y + SZ / 2, SZ / 2, creator);
+				TL = new TerrainQuadTreeNode<T> (X, Y, SZ / 2, this, creator);
+				TR = new TerrainQuadTreeNode<T> (X + SZ / 2, Y, SZ / 2, this, creator);
+				BL = new TerrainQuadTreeNode<T> (X, Y + SZ / 2, SZ / 2, this, creator);
+				BR = new TerrainQuadTreeNode<T> (X + SZ / 2, Y + SZ / 2, SZ / 2, this, creator);
 				Splitted = true;
-				nbfils = 4;
+				return true;
 			}
+			return false;
 		}
 
-		private void fusion() {
+		private bool fusion() {
 			if (Splitted) {
+				TL.obj.Delete ();
+				TR.obj.Delete ();
+				BL.obj.Delete ();
+				BR.obj.Delete ();
 				TL = null;
 				TR = null;
 				BL = null;
 				BR = null;
 				Splitted = false;
-				nbfils = 0;
+				return true;
 			}
+			return false;
 		}
 
-		public int adapt(int x, int y) {
-			Debug.Log ("adapt() " + X + " " + Y + " " + SZ + " " + obj.IsReady());
-			if (SZ > 1) { // && obj.IsReady()) {
+		public T GetAtPos(int x, int y) {
+			if (obj.IsReady ()) {
+				return obj;
+			}
+			if (Splitted) {
+				if (x < X + SZ / 2) {
+					if (y < Y + SZ / 2) {
+						return TL.GetAtPos (x, y);
+					} else {
+						return BL.GetAtPos (x, y);
+					}
+				} else {
+					if (y < Y + SZ / 2) {
+						return TR.GetAtPos (x, y);
+					} else {
+						return BR.GetAtPos (x, y);
+					}
+				}
+			}
+			return obj;
+		}
+
+		public bool adapt(int x, int y) {
+			bool ret = false;
+			if (SZ > 1 && (obj.IsReady() || Splitted)) {
 				int centerX = X + SZ / 2;
 				int centerY = Y + SZ / 2;
 				int distCarre = (centerX - x) * (centerX - x) + (centerY - y) * (centerY - y);
 				if (distCarre < (1.5*SZ)*(1.5*SZ)) {
-					split ();
-					nbfils += TL.adapt (x, y);
-					nbfils += TR.adapt (x, y);
-					nbfils += BL.adapt (x, y);
-					nbfils += BR.adapt (x, y);
+					ret |= split ();
+					ret |= TL.adapt (x, y);
+					ret |= TR.adapt (x, y);
+					ret |= BL.adapt (x, y);
+					ret |= BR.adapt (x, y);
 				} else {
-					fusion ();
+					ret |= fusion ();
 				}
 			}
-			return nbfils;
+			return ret;
 		}
 
 		public System.Collections.Generic.IEnumerable<TerrainQuadTreeNode<T>> Enumerator {
@@ -107,7 +127,7 @@ namespace TerrainGenerator
 		}
 	}
 
-	public class TerrainQuadTree<T> where T : Ready
+	public class TerrainQuadTree<T> where T : TQTReady
 	{
 		public int SZ { get; }
 		public delegate T CreateTerrainQuadTreeNodeElement(TerrainQuadTreeNode<T> node);
@@ -121,14 +141,28 @@ namespace TerrainGenerator
 			root = null;
 		}
 
-		public void adapt(int x, int y) {
+		public bool empty() {
+			return root == null;
+		}
+
+		public T GetAtPos(int x, int y) {
+			if (x < - root.SZ / 2 || x > root.SZ / 2 || y < - root.SZ / 2 || y > root.SZ / 2) {
+				throw new System.IndexOutOfRangeException();
+			}
+			return root.GetAtPos(x, y);
+		}
+
+		public bool adapt(int x, int y) {
+			bool ret = false;
 			if (root == null) {
-				root = new TerrainQuadTreeNode<T> (-SZ / 2, -SZ / 2, SZ, creator);
+				root = new TerrainQuadTreeNode<T> (-SZ / 2, -SZ / 2, SZ, null, creator);
+				ret = true;
 			}
 			if (x < - root.SZ / 2 || x > root.SZ / 2 || y < - root.SZ / 2 || y > root.SZ / 2) {
 				throw new System.IndexOutOfRangeException();
 			}
-			root.adapt (x, y);
+			ret |= root.adapt (x, y);
+			return ret;
 		}
 
 		public System.Collections.Generic.IEnumerable<TerrainQuadTreeNode<T>> Enumerator {

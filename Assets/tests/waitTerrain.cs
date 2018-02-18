@@ -16,7 +16,7 @@ public class waitTerrain : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
-		if (!isOnTerrain) {
+		if (!isOnTerrain || Input.GetKey(KeyCode.U)) {
 			Vector3 worldPos = transform.position;
 			if (Generator.IsTerrainAvailable (worldPos)) {
 				Debug.Log (transform.position.ToString());

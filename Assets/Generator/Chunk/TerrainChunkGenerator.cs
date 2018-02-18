@@ -110,17 +110,17 @@ namespace TerrainGenerator
         }
 
 		private TerrainChunk CreateAChunck(TerrainQuadTreeNode<TerrainChunk> node) {
-			return new TerrainChunk(Settings[node.SZ], NoiseProvider, node.X, node.Y, node.SZ);
+			var chunk = new TerrainChunk (Settings [node.SZ], NoiseProvider, node.X, node.Y, node.SZ, node);
+			return chunk;
 		}
 
-		private List<TerrainChunk> GetChunkPositionsInRadius(Vector2i chunkPosition, int radius)
+		private List<TerrainChunk> GetChunkPositionsInRadius(Vector2i chunkPosition)
         {
 			var result = new List<TerrainChunk>();
-			QT.adapt (chunkPosition.X, chunkPosition.Z);
 			foreach (TerrainQuadTreeNode<TerrainChunk> node in QT.Enumerator) {
 				result.Add (node.obj);
 			}
-			result.Sort ((a, b) => (chunkPosition.DistanceTo(a.Position).CompareTo(chunkPosition.DistanceTo(b.Position))));
+			//result.Sort ((a, b) => (chunkPosition.DistanceTo(a.Position).CompareTo(chunkPosition.DistanceTo(b.Position))));
 
             return result;
         }
@@ -128,21 +128,23 @@ namespace TerrainGenerator
         public void UpdateTerrain(Vector3 worldPosition, int radius)
         {
             var chunkPosition = GetChunkPosition(worldPosition);
-            var newPositions = GetChunkPositionsInRadius(chunkPosition, radius);
+			//if changed whe have to adapt chuck cache content
+			if (QT.adapt (chunkPosition.X, chunkPosition.Z)) {
+				var newPositions = GetChunkPositionsInRadius (chunkPosition);
+				var loadedChunks = Cache.GetLoadedChunks ();
+				var chunksToRemove = loadedChunks.Except (newPositions).ToList ();
 
-            var loadedChunks = Cache.GetGeneratedChunks();
-            var chunksToRemove = loadedChunks.Except(newPositions).ToList();
-
-            var positionsToGenerate = newPositions.Except(chunksToRemove).ToList();
-			foreach (var chunck in positionsToGenerate) {
-				if (Cache.ChunkCanBeAdded (chunck.Position)) {
-					Cache.AddNewChunk (chunck);
+				var positionsToGenerate = newPositions.Except (chunksToRemove).ToList ();
+				foreach (var chunck in positionsToGenerate) {
+					if (Cache.ChunkCanBeAdded (chunck.Position)) {
+						Cache.AddNewChunk (chunck);
+					}
 				}
-			}
 
-			foreach (var chunck in chunksToRemove) {
-				if (Cache.ChunkCanBeRemoved (chunck.Position))
-					Cache.RemoveChunk (chunck.Position);
+				foreach (var chunck in chunksToRemove) {
+					if (Cache.ChunkCanBeRemoved (chunck.Position))
+						Cache.RemoveChunk (chunck.Position);
+				}
 			}
         }
 
@@ -150,20 +152,24 @@ namespace TerrainGenerator
         {
 			var x = (int)Mathf.Floor(worldPosition.x / chunkSz);
 			var z = (int)Mathf.Floor(worldPosition.z / chunkSz);
-
-            return new Vector2i(x, z, 1);
+			if (!QT.empty ()) {
+				var node = QT.GetAtPos (x, z);
+				return node.Position;
+			} else {
+				return new Vector2i (x, z, 1);
+			}
         }
 
         public bool IsTerrainAvailable(Vector3 worldPosition)
         {
             var chunkPosition = GetChunkPosition(worldPosition);
-            return Cache.IsChunkGenerated(chunkPosition);
+            return Cache.IsChunkLoaded(chunkPosition);
         }
 
         public float GetTerrainHeight(Vector3 worldPosition)
         {
             var chunkPosition = GetChunkPosition(worldPosition);
-            var chunk = Cache.GetGeneratedChunk(chunkPosition);
+			var chunk = Cache.GetLoadedChunk(chunkPosition);
             if (chunkPosition != null)
                 return chunk.GetTerrainHeight(worldPosition);
 

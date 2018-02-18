@@ -18,7 +18,7 @@ namespace TerrainGenerator
 		public double LongitudeAngle = 0;
 		public double LatitudeAngle = -70;
 
-		private Perlin PerlinNoiseGenerator;
+		//private Perlin PerlinNoiseGenerator;
 
 		//private object NoiseLibThreadLockObject;
 		public NoiseProvider(NoiseProvider np)
@@ -33,7 +33,7 @@ namespace TerrainGenerator
 
 		private void init(int seed, double radius, double max, double min, double denivel_min, double denivel_max)
 		{
-			PerlinNoiseGenerator = new Perlin(100, 4, 0.25, 10, seed, LibNoise.QualityMode.High);
+			//PerlinNoiseGenerator = new Perlin(100, 4, 0.25, 10, seed, LibNoise.QualityMode.High);
 
 			//NoiseLibThreadLockObject = new object ();
 			pseed = seed;
@@ -44,7 +44,7 @@ namespace TerrainGenerator
 			dvl_max = denivel_max;
 			maxh = max; //highest mountain
 			minh = min; //lowest under sea
-			Debug.Log ("NoiseProvider: r="+radius+" maxh="+maxh+" minh="+minh+" zero="+zero+" upper="+upper+" denivel_min="+denivel_min+" denivel_max="+denivel_max);
+			//Debug.Log ("NoiseProvider: r="+radius+" maxh="+maxh+" minh="+minh+" zero="+zero+" upper="+upper+" denivel_min="+denivel_min+" denivel_max="+denivel_max);
 			//lock (NoiseLibThreadLockObject) {
 			CreatePlanet (pseed);
 			//}

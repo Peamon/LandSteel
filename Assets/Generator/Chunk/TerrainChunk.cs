@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace TerrainGenerator
 {
-	public class TerrainChunk : Ready
+	public class TerrainChunk : TQTReady
     {
         public Vector2i Position { get; private set; }
 
@@ -21,8 +21,11 @@ namespace TerrainGenerator
 
         private object HeightmapThreadLockObject { get; set; }
 
-		public TerrainChunk(TerrainChunkSettings settings, NoiseProvider noiseProvider, int x, int z, int res)
+		private TerrainQuadTreeNode<TerrainChunk> TQTNode;
+
+		public TerrainChunk(TerrainChunkSettings settings, NoiseProvider noiseProvider, int x, int z, int res, TerrainQuadTreeNode<TerrainChunk> node)
         {
+			TQTNode = node;
             HeightmapThreadLockObject = new object();
 
             Settings = settings;
@@ -34,12 +37,38 @@ namespace TerrainGenerator
 
         #region Heightmap stuff
 
+		public TerrainChunk GetParent() {
+			if (TQTNode != null && TQTNode.parent != null) {
+				return TQTNode.parent.obj;
+			}
+			return null;
+		}
+
         public void GenerateHeightmap()
         {
+			//Debug.Log ("GenerateHeightmap(): " + Position);
 			//copy NoiseProvider it's because it's not thread safety
 			//but 2 NoiseProvider with the same parameters give the same results
 			var lnoise = new NoiseProvider (NoiseProvider);
-            lock (HeightmapThreadLockObject)
+			var parent = GetParent ();
+			var xDecal = 0;
+			var zDecal = 0;
+			if (parent != null) {
+				if (TQTNode == parent.TQTNode.TL) {
+					xDecal = 0;
+					zDecal = 0;
+				} else if (TQTNode == parent.TQTNode.TR) {
+					xDecal = Settings.HeightmapResolution / 2;
+					zDecal = 0;
+				} else if (TQTNode == parent.TQTNode.BL) {
+					xDecal = 0;
+					zDecal = Settings.HeightmapResolution / 2;
+				} else if (TQTNode == parent.TQTNode.BR) {
+					xDecal = Settings.HeightmapResolution / 2;
+					zDecal = Settings.HeightmapResolution / 2;
+				}
+			}
+			lock (HeightmapThreadLockObject)
             {
                 var heightmap = new float[Settings.HeightmapResolution, Settings.HeightmapResolution];
 
@@ -47,28 +76,32 @@ namespace TerrainGenerator
                 {
                     for (var xRes = 0; xRes < Settings.HeightmapResolution; xRes++)
                     {
-						double xCoordinate = (double)Position.X/Position.Res + (double)xRes / ((double)Settings.HeightmapResolution - 1);
-						double zCoordinate = (double)Position.Z/Position.Res + (double)zRes / ((double)Settings.HeightmapResolution - 1);
-
-						heightmap[zRes, xRes] = lnoise.GetValue((float)xCoordinate * Settings.Length, (float)zCoordinate * Settings.Length);
+						if (parent != null && xRes % 2 == 0 && zRes % 2 == 0) {
+							heightmap [zRes, xRes] = parent.Heightmap [zRes / 2 + zDecal, xRes / 2 + xDecal];
+						} else {
+							double xCoordinate = (double)Position.X/Position.Res + (double)xRes / ((double)Settings.HeightmapResolution - 1);
+							double zCoordinate = (double)Position.Z/Position.Res + (double)zRes / ((double)Settings.HeightmapResolution - 1);
+							heightmap [zRes, xRes] = lnoise.GetValue ((float)xCoordinate * Settings.Length, (float)zCoordinate * Settings.Length);
+						}
                     }
                 }
 
                 Heightmap = heightmap;
+				//Debug.Log ("GenerateHeightmap(): Generated for " + Position);
 				//Debug.Log ("pos=("+Position.X+", "+Position.Z+", "+Position.Res+") "+" minx=" + lnoise.minx + " maxx=" + lnoise.maxx + " length="+Settings.Length);
             }
         }
 
         public bool IsHeightmapReady()
         {
-            return Terrain == null && Heightmap != null;
+            return Heightmap != null;
         }
 
 		public bool IsReady() {
-			return IsHeightmapReady ();
+			return Terrain != null && Terrain.drawHeightmap;
 		}
 
-        public float GetTerrainHeight(Vector3 worldPosition)
+		public float GetTerrainHeight(Vector3 worldPosition)
         {
             return Terrain.SampleHeight(worldPosition);
         }
@@ -79,6 +112,7 @@ namespace TerrainGenerator
 
         public void CreateTerrain()
         {
+			//Debug.Log ("CreateTerrain(): " + Position);
             Data = new TerrainData();
             Data.heightmapResolution = Settings.HeightmapResolution;
             Data.alphamapResolution = Settings.AlphamapResolution;
@@ -142,13 +176,13 @@ namespace TerrainGenerator
         #endregion
 
         #region Distinction
-
-        public override int GetHashCode()
+        
+		public override int GetHashCode()
         {
             return Position.GetHashCode();
         }
 
-        public override bool Equals(object obj)
+		public override bool Equals(object obj)
         {
             var other = obj as TerrainChunk;
             if (other == null)
@@ -157,15 +191,31 @@ namespace TerrainGenerator
             return this.Position.Equals(other.Position);
         }
 
+		public override string ToString()
+		{
+			return "<TerrainChunck pos="+Position+">";
+		}
+
         #endregion
 
         #region Chunk removal
 
+		public bool CanBeRemoved() {
+			if (TQTNode != null) {
+				if (TQTNode.TL.obj.IsHeightmapReady() &&
+					TQTNode.TR.obj.IsHeightmapReady() &&
+					TQTNode.BL.obj.IsHeightmapReady() &&
+					TQTNode.BR.obj.IsHeightmapReady()) {
+					return true;
+				}
+				return false;
+			}
+			return true;
+		}
+
         public void Remove()
         {
-            Heightmap = null;
-            Settings = null;
-
+			//Debug.Log ("Remove(): " + Position);
             if (Neighborhood.XDown != null)
             {
                 Neighborhood.XDown.RemoveFromNeighborhood(this);
@@ -187,10 +237,45 @@ namespace TerrainGenerator
                 Neighborhood.ZUp = null;
             }
 
-            if (Terrain != null)
-                GameObject.Destroy(Terrain.gameObject);
+			if (Terrain != null) {
+				//Terrain.drawHeightmap = false;
+				GameObject.Destroy(Terrain.gameObject);
+				Terrain = null;
+			}
         }
 
+		public void Delete()
+		{
+			//Debug.Log ("Delete(): " + Position);
+			Heightmap = null;
+			Settings = null;
+
+			if (Neighborhood.XDown != null)
+			{
+				Neighborhood.XDown.RemoveFromNeighborhood(this);
+				Neighborhood.XDown = null;
+			}
+			if (Neighborhood.XUp != null)
+			{
+				Neighborhood.XUp.RemoveFromNeighborhood(this);
+				Neighborhood.XUp = null;
+			}
+			if (Neighborhood.ZDown != null)
+			{
+				Neighborhood.ZDown.RemoveFromNeighborhood(this);
+				Neighborhood.ZDown = null;
+			}
+			if (Neighborhood.ZUp != null)
+			{
+				Neighborhood.ZUp.RemoveFromNeighborhood(this);
+				Neighborhood.ZUp = null;
+			}
+
+			if (Terrain != null) {
+				GameObject.Destroy(Terrain.gameObject);
+				Terrain = null;
+			}
+		}
         public void RemoveFromNeighborhood(TerrainChunk chunk)
         {
             if (Neighborhood.XDown == chunk)
@@ -250,7 +335,7 @@ namespace TerrainGenerator
 
 				//Update HeightMap Data for part without neighbors.
 				//reset to default
-				var decal = -0.1f;
+				var decal = -0.0f;
 				Terrain.terrainData.SetHeights (0, 0, Heightmap);
 
 				//Debug.Log ("UpdateNeighbors" + Position + ": xd=" + xDown + " xu=" + xUp + " zd=" + zDown + " zu=" + zUp);
