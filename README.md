@@ -6,11 +6,12 @@ Try to start a procedural planet as wide as earth. Starting code for Unity is ht
 - Using a QuadTree to draw terrain from First person camera to far distance (50Km)
 - separate scene with sphere world and texture (3d world map)
 - Adapt terrain heightmap border dynamically (prepare work to connect different Quadtree levels)
+- Use the QuadTree to avoid 25% point calculation when split.
 
 # What's need to be done
+- Use the QuadTree to re-create terrain chuncks while ethan walk on fusion.
+- Connect Terrain from different quadtree level (not native in Unity...), in first step adapt border height map to match neighbor (smaller chunck repeat height value of the parent on border)
 - lat/lon clamping to have a finite number of planes touching the earth's surface
-- Using a QuadTree visitor (instead of chunk Cache) to avoid 25% point calculation when split and 100% on fusion and terrain chunck hole while ethan walk.
-- Connect Terrain from different quadtree level (not native in Unity...), in first step adpapt border height map to match neighbor (smaller chunck repeat height value of the parent on border)
 - Adapt terrain chunks height locally to have a better resolution (will it suppress the flickering ?)
 - Work on terrain texture
 - Add sea at level 0
