@@ -120,7 +120,7 @@ namespace TerrainGenerator
 			foreach (TerrainQuadTreeNode<TerrainChunk> node in QT.Enumerator) {
 				result.Add (node.obj);
 			}
-			//result.Sort ((a, b) => (chunkPosition.DistanceTo(a.Position).CompareTo(chunkPosition.DistanceTo(b.Position))));
+			result.Sort ((a, b) => (chunkPosition.DistanceTo(a.Position).CompareTo(chunkPosition.DistanceTo(b.Position))));
 
             return result;
         }
@@ -145,6 +145,7 @@ namespace TerrainGenerator
 					if (Cache.ChunkCanBeRemoved (chunck.Position))
 						Cache.RemoveChunk (chunck.Position);
 				}
+				Cache.Update ();
 			}
         }
 

@@ -88,7 +88,7 @@ namespace TerrainGenerator
 
 		public bool adapt(int x, int y) {
 			bool ret = false;
-			if (SZ > 1 && (obj.IsReady() || Splitted)) {
+			if (SZ > 1) {
 				int centerX = X + SZ / 2;
 				int centerY = Y + SZ / 2;
 				int distCarre = (centerX - x) * (centerX - x) + (centerY - y) * (centerY - y);

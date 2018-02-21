@@ -44,9 +44,44 @@ namespace TerrainGenerator
 			return null;
 		}
 
+		public void TryGenerateHeightmapWithSplitted() {
+			if (TQTNode != null &&
+				TQTNode.TL.obj.IsHeightmapReady() &&
+				TQTNode.TR.obj.IsHeightmapReady() &&
+				TQTNode.BL.obj.IsHeightmapReady() &&
+				TQTNode.BR.obj.IsHeightmapReady()) {
+				Debug.Log ("TryGenerateHeightmapWithSplitted(): " + Position);
+				lock (HeightmapThreadLockObject) {
+					var heightmap = new float[Settings.HeightmapResolution, Settings.HeightmapResolution];
+					var resdiv2 = Settings.HeightmapResolution / 2;
+					for (var zRes = 0; zRes < resdiv2; zRes++) {
+						for (var xRes = 0; xRes < resdiv2; xRes++) {
+							heightmap [zRes, xRes] = TQTNode.TL.obj.Heightmap [zRes * 2, xRes * 2];
+						}
+					}
+					for (var zRes = 0; zRes < resdiv2; zRes++) {
+						for (var xRes = 0; xRes <= resdiv2; xRes++) {
+							heightmap [zRes, xRes + resdiv2] = TQTNode.TR.obj.Heightmap [zRes * 2, xRes * 2];
+						}
+					}
+					for (var zRes = 0; zRes <= resdiv2; zRes++) {
+						for (var xRes = 0; xRes < resdiv2; xRes++) {
+							heightmap [zRes + resdiv2, xRes] = TQTNode.BL.obj.Heightmap [zRes * 2, xRes * 2];
+						}
+					}
+					for (var zRes = 0; zRes <= resdiv2; zRes++) {
+						for (var xRes = 0; xRes <= resdiv2; xRes++) {
+							heightmap [zRes + resdiv2, xRes + resdiv2] = TQTNode.BR.obj.Heightmap [zRes * 2, xRes * 2];
+						}
+					}
+					Heightmap = heightmap;
+				}
+			}
+		}
+
         public void GenerateHeightmap()
         {
-			//Debug.Log ("GenerateHeightmap(): " + Position);
+			Debug.Log ("GenerateHeightmap(): " + Position);
 			//copy NoiseProvider it's because it's not thread safety
 			//but 2 NoiseProvider with the same parameters give the same results
 			var lnoise = new NoiseProvider (NoiseProvider);
@@ -76,7 +111,7 @@ namespace TerrainGenerator
                 {
                     for (var xRes = 0; xRes < Settings.HeightmapResolution; xRes++)
                     {
-						if (parent != null && xRes % 2 == 0 && zRes % 2 == 0) {
+						if (parent != null && parent.Heightmap != null && xRes % 2 == 0 && zRes % 2 == 0) {
 							heightmap [zRes, xRes] = parent.Heightmap [zRes / 2 + zDecal, xRes / 2 + xDecal];
 						} else {
 							double xCoordinate = (double)Position.X/Position.Res + (double)xRes / ((double)Settings.HeightmapResolution - 1);
@@ -87,6 +122,9 @@ namespace TerrainGenerator
                 }
 
                 Heightmap = heightmap;
+				if (parent != null) {
+					parent.TryGenerateHeightmapWithSplitted ();
+				}
 				//Debug.Log ("GenerateHeightmap(): Generated for " + Position);
 				//Debug.Log ("pos=("+Position.X+", "+Position.Z+", "+Position.Res+") "+" minx=" + lnoise.minx + " maxx=" + lnoise.maxx + " length="+Settings.Length);
             }
@@ -112,7 +150,7 @@ namespace TerrainGenerator
 
         public void CreateTerrain()
         {
-			//Debug.Log ("CreateTerrain(): " + Position);
+			Debug.Log ("CreateTerrain(): " + Position);
             Data = new TerrainData();
             Data.heightmapResolution = Settings.HeightmapResolution;
             Data.alphamapResolution = Settings.AlphamapResolution;
@@ -201,7 +239,7 @@ namespace TerrainGenerator
         #region Chunk removal
 
 		public bool CanBeRemoved() {
-			if (TQTNode != null) {
+			if (TQTNode != null && TQTNode.TL != null) {
 				if (TQTNode.TL.obj.IsHeightmapReady() &&
 					TQTNode.TR.obj.IsHeightmapReady() &&
 					TQTNode.BL.obj.IsHeightmapReady() &&
@@ -215,7 +253,7 @@ namespace TerrainGenerator
 
         public void Remove()
         {
-			//Debug.Log ("Remove(): " + Position);
+			Debug.Log ("Remove(): " + Position);
             if (Neighborhood.XDown != null)
             {
                 Neighborhood.XDown.RemoveFromNeighborhood(this);
@@ -246,7 +284,7 @@ namespace TerrainGenerator
 
 		public void Delete()
 		{
-			//Debug.Log ("Delete(): " + Position);
+			Debug.Log ("Delete(): " + Position);
 			Heightmap = null;
 			Settings = null;
 

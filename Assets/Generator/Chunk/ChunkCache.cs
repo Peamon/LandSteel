@@ -32,21 +32,19 @@ namespace TerrainGenerator
 
         public void Update()
         {
+			TryToDeleteQueuedChunks();
             GenerateHeightmapForAvailableChunks();
             CreateTerrainForReadyChunks();
-			TryToDeleteQueuedChunks();
         }
 
         public void AddNewChunk(TerrainChunk chunk)
         {
             RequestedChunks.Add(chunk.Position, chunk);
-            GenerateHeightmapForAvailableChunks();
         }
 
 		public void RemoveChunk(Vector2i key)
         {
 			ChunksToRemove.Add(key);
-            TryToDeleteQueuedChunks();
         }
 
 		public bool ChunkCanBeAdded(Vector2i key)
@@ -84,6 +82,17 @@ namespace TerrainGenerator
         private void GenerateHeightmapForAvailableChunks()
         {
             var requestedChunks = RequestedChunks.ToList();
+
+			// move directly the ready heightmap to ChunksGenerated
+			foreach (var chunkEntry in requestedChunks) {
+				if (chunkEntry.Value.IsHeightmapReady ()) {
+					ChunksGenerated.Add(chunkEntry.Key, chunkEntry.Value);
+					RequestedChunks.Remove(chunkEntry.Key);
+				}
+			}
+
+			// start creating heightmap for the requested not ready
+			requestedChunks = RequestedChunks.ToList();
             if (requestedChunks.Count > 0 && ChunksBeingGenerated.Count < MaxChunkThreads)
             {
                 var chunksToAdd = requestedChunks.Take(MaxChunkThreads - ChunksBeingGenerated.Count);
