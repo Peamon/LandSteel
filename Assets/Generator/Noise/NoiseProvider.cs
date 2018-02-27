@@ -24,6 +24,8 @@ namespace TerrainGenerator
 		public NoiseProvider(NoiseProvider np)
 		{
 			init (np.pseed, np.r, np.maxh, np.minh, np.dvl_min, np.dvl_max);
+			LongitudeAngle = np.LongitudeAngle;
+			LatitudeAngle = np.LatitudeAngle;
 		}
 
 		public NoiseProvider(int seed, double radius, double max, double min, double denivel_min, double denivel_max)
@@ -50,6 +52,10 @@ namespace TerrainGenerator
 			//}
 			minx=5000;
 			maxx=-5000;
+		}
+
+		public string getFolder() {
+			return LongitudeAngle.ToString () + "_" + LatitudeAngle.ToString ();
 		}
 
 		public double minx;

@@ -11,6 +11,7 @@ public class WorldTerrain : MonoBehaviour {
 	public int seed = 0;
 	public double earthFactor = 1;
 	public int Radius = 4;
+	public string CachePath = "/Users/popigny/Documents/Developpement/LandSteel/TerrainCache";
 
 	private Vector2i PreviousPlayerChunkPosition;
 	public TerrainChunkGenerator Generator;
@@ -22,7 +23,7 @@ public class WorldTerrain : MonoBehaviour {
 	// Use this for initialization
 	void Start () {
 		//Debug.Log("WorldTerrain::Awake()");
-		Generator.Set (seed, earthFactor, Radius, true, 3000);
+		Generator.Set (seed, earthFactor, Radius, true, 3000, CachePath);
 	}
 
 	// Update is called once per frame

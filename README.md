@@ -8,10 +8,11 @@ Try to start a procedural planet as wide as earth. Starting code for Unity is ht
 - Adapt terrain heightmap border dynamically (prepare work to connect different Quadtree levels)
 - Use the QuadTree to avoid 25% point calculation when split.
 - Use the QuadTree to create terrain chuncks while ethan walk on fusion (use children heightmap to create the parent one)
+- save generated height map in a cache on disk
 
 # What's need to be done
 - lat/lon clamping to have a finite number of planes touching the earth's surface
-- save generated height map in a cache on disk (or in a distributed mongo file system: collaborative terrain generation)
+- save generated height map in a distributed mongo file system: collaborative terrain generation
 - Connect Terrain from different quadtree level (not native in Unity...), in first step adapt border height map to match neighbor (smaller chunck repeat height value of the parent on border)
 - Adapt terrain chunks height locally to have a better resolution (will it suppress the flickering ?)
 - Work on terrain texture

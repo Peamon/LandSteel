@@ -17,12 +17,14 @@ namespace TerrainGenerator
 		private NoiseProvider NoiseProvider;
 
         private ChunkCache Cache;
+		private string CachePath;
 		private double r;
 		int chunkSz = 100;
 
 		TerrainQuadTree<TerrainChunk> QT;
 
-		public void Set(int seed, double earthFactor, int Depth, bool searchALatLon = false, double atminheight=2000) {
+		public void Set(int seed, double earthFactor, int Depth, bool searchALatLon = false, double atminheight=2000, string cachepath = "") {
+			CachePath = cachepath;
 			QT = new TerrainQuadTree<TerrainChunk> (Depth, CreateAChunck);
 			int Radius = QT.SZ / 2;
 			r = 6400000 * earthFactor; //earth
@@ -110,7 +112,7 @@ namespace TerrainGenerator
         }
 
 		private TerrainChunk CreateAChunck(TerrainQuadTreeNode<TerrainChunk> node) {
-			var chunk = new TerrainChunk (Settings [node.SZ], NoiseProvider, node.X, node.Y, node.SZ, node);
+			var chunk = new TerrainChunk (Settings [node.SZ], NoiseProvider, node.X, node.Y, node.SZ, node, CachePath);
 			return chunk;
 		}
 

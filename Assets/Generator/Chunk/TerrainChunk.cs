@@ -1,5 +1,6 @@
 ﻿using System;
 using UnityEngine;
+using System.IO;
 
 namespace TerrainGenerator
 {
@@ -23,8 +24,11 @@ namespace TerrainGenerator
 
 		private TerrainQuadTreeNode<TerrainChunk> TQTNode;
 
-		public TerrainChunk(TerrainChunkSettings settings, NoiseProvider noiseProvider, int x, int z, int res, TerrainQuadTreeNode<TerrainChunk> node)
+		private string CachePath;
+
+		public TerrainChunk(TerrainChunkSettings settings, NoiseProvider noiseProvider, int x, int z, int res, TerrainQuadTreeNode<TerrainChunk> node, string cache_path)
         {
+			CachePath = cache_path;
 			TQTNode = node;
             HeightmapThreadLockObject = new object();
 
@@ -74,8 +78,27 @@ namespace TerrainGenerator
 							heightmap [zRes + resdiv2, xRes + resdiv2] = TQTNode.BR.obj.Heightmap [zRes * 2, xRes * 2];
 						}
 					}
+
+					saveData (heightmap);
+
 					Heightmap = heightmap;
 				}
+			}
+		}
+
+		public void saveData(float[,] data, bool force = false) {
+			string fpath = CachePath + "/" + NoiseProvider.getFolder ();
+			fpath += "/" + Position.Res.ToString ();
+			fpath += "/" + Position.X.ToString() + "_" + Position.Z.ToString () + ".raw";
+			Debug.Log (fpath);
+
+			if (force || ! File.Exists (fpath)) {
+				if (!Directory.Exists (Path.GetDirectoryName (fpath))) {
+					Directory.CreateDirectory (Path.GetDirectoryName (fpath));
+				}
+				var byteArray = new byte[data.Length * 4];
+				Buffer.BlockCopy (data, 0, byteArray, 0, byteArray.Length);
+				File.WriteAllBytes (fpath, byteArray);
 			}
 		}
 
@@ -105,21 +128,34 @@ namespace TerrainGenerator
 			}
 			lock (HeightmapThreadLockObject)
             {
-                var heightmap = new float[Settings.HeightmapResolution, Settings.HeightmapResolution];
+				string fpath = CachePath + "/" + NoiseProvider.getFolder ();
+				fpath += "/" + Position.Res.ToString ();
+				fpath += "/" + Position.X.ToString() + "_" + Position.Z.ToString () + ".raw";
 
-                for (var zRes = 0; zRes < Settings.HeightmapResolution; zRes++)
-                {
-                    for (var xRes = 0; xRes < Settings.HeightmapResolution; xRes++)
-                    {
-						if (parent != null && parent.Heightmap != null && xRes % 2 == 0 && zRes % 2 == 0) {
-							heightmap [zRes, xRes] = parent.Heightmap [zRes / 2 + zDecal, xRes / 2 + xDecal];
-						} else {
-							double xCoordinate = (double)Position.X/Position.Res + (double)xRes / ((double)Settings.HeightmapResolution - 1);
-							double zCoordinate = (double)Position.Z/Position.Res + (double)zRes / ((double)Settings.HeightmapResolution - 1);
-							heightmap [zRes, xRes] = lnoise.GetValue ((float)xCoordinate * Settings.Length, (float)zCoordinate * Settings.Length);
+				var heightmap = new float[Settings.HeightmapResolution, Settings.HeightmapResolution];
+				var loaded = false;
+				if (File.Exists (fpath)) {
+					var byteArray = File.ReadAllBytes (fpath);
+					if (byteArray.Length == heightmap.Length * 4) {
+						Buffer.BlockCopy (byteArray, 0, heightmap, 0, byteArray.Length);
+						loaded = true;
+					}
+				}
+				if (!loaded) {
+					for (var zRes = 0; zRes < Settings.HeightmapResolution; zRes++) {
+						for (var xRes = 0; xRes < Settings.HeightmapResolution; xRes++) {
+							if (parent != null && parent.Heightmap != null && xRes % 2 == 0 && zRes % 2 == 0) {
+								heightmap [zRes, xRes] = parent.Heightmap [zRes / 2 + zDecal, xRes / 2 + xDecal];
+							} else {
+								double xCoordinate = (double)Position.X / Position.Res + (double)xRes / ((double)Settings.HeightmapResolution - 1);
+								double zCoordinate = (double)Position.Z / Position.Res + (double)zRes / ((double)Settings.HeightmapResolution - 1);
+								heightmap [zRes, xRes] = lnoise.GetValue ((float)xCoordinate * Settings.Length, (float)zCoordinate * Settings.Length);
+							}
 						}
-                    }
-                }
+					}
+
+					saveData (heightmap, true);
+				}
 
                 Heightmap = heightmap;
 				if (parent != null) {
