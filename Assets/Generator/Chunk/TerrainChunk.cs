@@ -55,32 +55,33 @@ namespace TerrainGenerator
 				TQTNode.BL.obj.IsHeightmapReady() &&
 				TQTNode.BR.obj.IsHeightmapReady()) {
 				Debug.Log ("TryGenerateHeightmapWithSplitted(): " + Position);
+
+				var heightmap = new float[Settings.HeightmapResolution, Settings.HeightmapResolution];
+				var resdiv2 = Settings.HeightmapResolution / 2;
+				for (var zRes = 0; zRes < resdiv2; zRes++) {
+					for (var xRes = 0; xRes < resdiv2; xRes++) {
+						heightmap [zRes, xRes] = TQTNode.TL.obj.Heightmap [zRes * 2, xRes * 2];
+					}
+				}
+				for (var zRes = 0; zRes < resdiv2; zRes++) {
+					for (var xRes = 0; xRes <= resdiv2; xRes++) {
+						heightmap [zRes, xRes + resdiv2] = TQTNode.TR.obj.Heightmap [zRes * 2, xRes * 2];
+					}
+				}
+				for (var zRes = 0; zRes <= resdiv2; zRes++) {
+					for (var xRes = 0; xRes < resdiv2; xRes++) {
+						heightmap [zRes + resdiv2, xRes] = TQTNode.BL.obj.Heightmap [zRes * 2, xRes * 2];
+					}
+				}
+				for (var zRes = 0; zRes <= resdiv2; zRes++) {
+					for (var xRes = 0; xRes <= resdiv2; xRes++) {
+						heightmap [zRes + resdiv2, xRes + resdiv2] = TQTNode.BR.obj.Heightmap [zRes * 2, xRes * 2];
+					}
+				}
+
+				saveData (heightmap);
+
 				lock (HeightmapThreadLockObject) {
-					var heightmap = new float[Settings.HeightmapResolution, Settings.HeightmapResolution];
-					var resdiv2 = Settings.HeightmapResolution / 2;
-					for (var zRes = 0; zRes < resdiv2; zRes++) {
-						for (var xRes = 0; xRes < resdiv2; xRes++) {
-							heightmap [zRes, xRes] = TQTNode.TL.obj.Heightmap [zRes * 2, xRes * 2];
-						}
-					}
-					for (var zRes = 0; zRes < resdiv2; zRes++) {
-						for (var xRes = 0; xRes <= resdiv2; xRes++) {
-							heightmap [zRes, xRes + resdiv2] = TQTNode.TR.obj.Heightmap [zRes * 2, xRes * 2];
-						}
-					}
-					for (var zRes = 0; zRes <= resdiv2; zRes++) {
-						for (var xRes = 0; xRes < resdiv2; xRes++) {
-							heightmap [zRes + resdiv2, xRes] = TQTNode.BL.obj.Heightmap [zRes * 2, xRes * 2];
-						}
-					}
-					for (var zRes = 0; zRes <= resdiv2; zRes++) {
-						for (var xRes = 0; xRes <= resdiv2; xRes++) {
-							heightmap [zRes + resdiv2, xRes + resdiv2] = TQTNode.BR.obj.Heightmap [zRes * 2, xRes * 2];
-						}
-					}
-
-					saveData (heightmap);
-
 					Heightmap = heightmap;
 				}
 			}
@@ -126,49 +127,49 @@ namespace TerrainGenerator
 					zDecal = Settings.HeightmapResolution / 2;
 				}
 			}
-			lock (HeightmapThreadLockObject)
-            {
-				string fpath = CachePath + "/" + NoiseProvider.getFolder ();
-				fpath += "/" + Position.Res.ToString ();
-				fpath += "/" + Position.X.ToString() + "_" + Position.Z.ToString () + ".raw";
 
-				var heightmap = new float[Settings.HeightmapResolution, Settings.HeightmapResolution];
-				var loaded = false;
-				if (File.Exists (fpath)) {
-					var byteArray = File.ReadAllBytes (fpath);
-					if (byteArray.Length == heightmap.Length * 4) {
-						Buffer.BlockCopy (byteArray, 0, heightmap, 0, byteArray.Length);
-						loaded = true;
-					}
+			string fpath = CachePath + "/" + NoiseProvider.getFolder ();
+			fpath += "/" + Position.Res.ToString ();
+			fpath += "/" + Position.X.ToString() + "_" + Position.Z.ToString () + ".raw";
+
+			var heightmap = new float[Settings.HeightmapResolution, Settings.HeightmapResolution];
+			var loaded = false;
+			if (File.Exists (fpath)) {
+				var byteArray = File.ReadAllBytes (fpath);
+				if (byteArray.Length == heightmap.Length * 4) {
+					Buffer.BlockCopy (byteArray, 0, heightmap, 0, byteArray.Length);
+					loaded = true;
 				}
-				if (!loaded) {
-					for (var zRes = 0; zRes < Settings.HeightmapResolution; zRes++) {
-						for (var xRes = 0; xRes < Settings.HeightmapResolution; xRes++) {
-							if (parent != null && parent.Heightmap != null && xRes % 2 == 0 && zRes % 2 == 0) {
-								heightmap [zRes, xRes] = parent.Heightmap [zRes / 2 + zDecal, xRes / 2 + xDecal];
-							} else {
-								double xCoordinate = (double)Position.X / Position.Res + (double)xRes / ((double)Settings.HeightmapResolution - 1);
-								double zCoordinate = (double)Position.Z / Position.Res + (double)zRes / ((double)Settings.HeightmapResolution - 1);
-								heightmap [zRes, xRes] = lnoise.GetValue ((float)xCoordinate * Settings.Length, (float)zCoordinate * Settings.Length);
-							}
+			}
+			if (!loaded) {
+				for (var zRes = 0; zRes < Settings.HeightmapResolution; zRes++) {
+					for (var xRes = 0; xRes < Settings.HeightmapResolution; xRes++) {
+						if (parent != null && parent.Heightmap != null && xRes % 2 == 0 && zRes % 2 == 0) {
+							heightmap [zRes, xRes] = parent.Heightmap [zRes / 2 + zDecal, xRes / 2 + xDecal];
+						} else {
+							double xCoordinate = (double)Position.X / Position.Res + (double)xRes / ((double)Settings.HeightmapResolution - 1);
+							double zCoordinate = (double)Position.Z / Position.Res + (double)zRes / ((double)Settings.HeightmapResolution - 1);
+							heightmap [zRes, xRes] = lnoise.GetValue ((float)xCoordinate * Settings.Length, (float)zCoordinate * Settings.Length);
 						}
 					}
-
-					saveData (heightmap, true);
 				}
 
-                Heightmap = heightmap;
-				if (parent != null) {
-					parent.TryGenerateHeightmapWithSplitted ();
-				}
-				//Debug.Log ("GenerateHeightmap(): Generated for " + Position);
-				//Debug.Log ("pos=("+Position.X+", "+Position.Z+", "+Position.Res+") "+" minx=" + lnoise.minx + " maxx=" + lnoise.maxx + " length="+Settings.Length);
-            }
+				saveData (heightmap, true);
+			}
+
+			lock (HeightmapThreadLockObject) {
+				Heightmap = heightmap;
+			}
+			if (parent != null) {
+				parent.TryGenerateHeightmapWithSplitted ();
+			}
         }
 
         public bool IsHeightmapReady()
         {
-            return Heightmap != null;
+			lock (HeightmapThreadLockObject) {
+				return Heightmap != null;
+			}
         }
 
 		public bool IsReady() {
@@ -190,7 +191,9 @@ namespace TerrainGenerator
             Data = new TerrainData();
             Data.heightmapResolution = Settings.HeightmapResolution;
             Data.alphamapResolution = Settings.AlphamapResolution;
-            Data.SetHeights(0, 0, Heightmap);
+			lock (HeightmapThreadLockObject) {
+				Data.SetHeights (0, 0, Heightmap);
+			}
             ApplyTextures(Data);
 
             Data.size = new Vector3(Settings.Length, Settings.Height, Settings.Length);
@@ -321,7 +324,9 @@ namespace TerrainGenerator
 		public void Delete()
 		{
 			Debug.Log ("Delete(): " + Position);
-			Heightmap = null;
+			lock (HeightmapThreadLockObject) {
+				Heightmap = null;
+			}
 			Settings = null;
 
 			if (Neighborhood.XDown != null)
@@ -410,35 +415,45 @@ namespace TerrainGenerator
 				//Update HeightMap Data for part without neighbors.
 				//reset to default
 				var decal = -0.0f;
-				Terrain.terrainData.SetHeights (0, 0, Heightmap);
+				lock (HeightmapThreadLockObject) {
+					Terrain.terrainData.SetHeights (0, 0, Heightmap);
+				}
 
 				//Debug.Log ("UpdateNeighbors" + Position + ": xd=" + xDown + " xu=" + xUp + " zd=" + zDown + " zu=" + zUp);
 
 				if (zDown == null) {
 					var heightmap = new float[1, Settings.HeightmapResolution];
-					for (int i = 0; i < Settings.HeightmapResolution; ++i) {
-						heightmap[0, i] = Heightmap [0, i]+decal;
+					lock (HeightmapThreadLockObject) {
+						for (int i = 0; i < Settings.HeightmapResolution; ++i) {
+							heightmap [0, i] = Heightmap [0, i] + decal;
+						}
 					}
 					Terrain.terrainData.SetHeights (0, 0, heightmap);
 				}
 				if (zUp == null) {
 					var heightmap = new float[1, Settings.HeightmapResolution];
-					for (int i = 0; i < Settings.HeightmapResolution; ++i) {
-						heightmap[0, i] = Heightmap [Settings.HeightmapResolution-1, i]+decal;
+					lock (HeightmapThreadLockObject) {
+						for (int i = 0; i < Settings.HeightmapResolution; ++i) {
+							heightmap [0, i] = Heightmap [Settings.HeightmapResolution - 1, i] + decal;
+						}
 					}
 					Terrain.terrainData.SetHeights (0, Settings.HeightmapResolution-1, heightmap);
 				}
 				if (xDown == null) {
 					var heightmap = new float[Settings.HeightmapResolution, 1];
-					for (int i = 0; i < Settings.HeightmapResolution; ++i) {
-						heightmap[i, 0] = Heightmap [i, 0]+decal;
+					lock (HeightmapThreadLockObject) {
+						for (int i = 0; i < Settings.HeightmapResolution; ++i) {
+							heightmap [i, 0] = Heightmap [i, 0] + decal;
+						}
 					}
 					Terrain.terrainData.SetHeights (0, 0, heightmap);
 				}
 				if (xUp == null) {
 					var heightmap = new float[Settings.HeightmapResolution, 1];
-					for (int i = 0; i < Settings.HeightmapResolution; ++i) {
-						heightmap[i, 0] = Heightmap [i, Settings.HeightmapResolution-1]+decal;
+					lock (HeightmapThreadLockObject) {
+						for (int i = 0; i < Settings.HeightmapResolution; ++i) {
+							heightmap [i, 0] = Heightmap [i, Settings.HeightmapResolution - 1] + decal;
+						}
 					}
 					Terrain.terrainData.SetHeights (Settings.HeightmapResolution-1, 0, heightmap);
 				}
