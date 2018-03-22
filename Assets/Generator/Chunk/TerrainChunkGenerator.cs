@@ -62,20 +62,20 @@ namespace TerrainGenerator
 			double denivel_sum = 0;
 			double denivel_nb = 0;
 
-			//Check nth point random to estimate max and min height
-			for (int nb = 0; nb < 1000; ++nb) {
-				int x = UnityEngine.Random.Range(-Radius, Radius);
-				int z = UnityEngine.Random.Range(-Radius, Radius);
-				double rx = UnityEngine.Random.Range(0, (float)chunkSz);
-				double rz = UnityEngine.Random.Range(0, (float)chunkSz);
-				double ch = np.HeightAt (x*(double)chunkSz + rx, z*(double)chunkSz + rz) - r;
-				denivel_sum += ch;
-				denivel_nb += 1;
-				if (ch > denivel_max) {
-					denivel_max = ch;
-				}
-				if (ch < denivel_min) {
-					denivel_min = ch;
+			//Check 1024 points to estimate max and min height
+			for (int x = 0; x < 32; ++x) {
+				for (int z = 0; z < 32; ++z) {
+					double rx = (float)chunkSz / 2;
+					double rz = (float)chunkSz / 2;
+					double ch = np.HeightAt (x*(double)chunkSz + rx, z*(double)chunkSz + rz) - r;
+					denivel_sum += ch;
+					denivel_nb += 1;
+					if (ch > denivel_max) {
+						denivel_max = ch;
+					}
+					if (ch < denivel_min) {
+						denivel_min = ch;
+					}
 				}
 			}
 
@@ -103,14 +103,14 @@ namespace TerrainGenerator
 		private void Awake()
         {
         }
-
+		/*
 		private void Update()
         {
 			if (r > 0) {
 				Cache.Update ();
 			}
         }
-
+        */
 		private TerrainChunk CreateAChunck(TerrainQuadTreeNode<TerrainChunk> node) {
 			var chunk = new TerrainChunk (Settings [node.SZ], NoiseProvider, node.X, node.Y, node.SZ, node, CachePath);
 			return chunk;
@@ -133,7 +133,7 @@ namespace TerrainGenerator
 			//if changed whe have to adapt chuck cache content
 			if (QT.adapt (chunkPosition.X, chunkPosition.Z)) {
 				var newPositions = GetChunkPositionsInRadius (chunkPosition);
-				var loadedChunks = Cache.GetLoadedChunks ();
+				var loadedChunks = Cache.GetAllChunks ();
 				var chunksToRemove = loadedChunks.Except (newPositions).ToList ();
 
 				var positionsToGenerate = newPositions.Except (chunksToRemove).ToList ();
@@ -147,7 +147,13 @@ namespace TerrainGenerator
 					if (Cache.ChunkCanBeRemoved (chunck.Position))
 						Cache.RemoveChunk (chunck.Position);
 				}
-				Cache.Update ();
+			}
+			if (r > 0) {
+				var ready = new List<TerrainChunk>();
+				foreach (TerrainQuadTreeNode<TerrainChunk> node in QT.ReadyEnumerator) {
+					ready.Add (node.obj);
+				}
+				Cache.Update (chunkPosition, ready);
 			}
         }
 
