@@ -125,10 +125,10 @@ namespace TerrainGenerator
 		public System.Collections.Generic.IEnumerable<TerrainQuadTreeNode<T>> ReadyEnumerator {
 			get {
 				if (Splitted && SZ > 1) {
-					if (TL.obj.IsReady () &&
+					if (!obj.IsReady() || (TL.obj.IsReady () &&
 					    TR.obj.IsReady () &&
 					    BL.obj.IsReady () &&
-					    BR.obj.IsReady ()) {
+						BR.obj.IsReady ())) {
 						foreach (TerrainQuadTreeNode<T> tqn in TL.ReadyEnumerator) {
 							yield return tqn;
 						}
