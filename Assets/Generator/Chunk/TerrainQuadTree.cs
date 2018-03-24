@@ -5,12 +5,7 @@ using UnityEngine;
 
 namespace TerrainGenerator
 {
-	public interface TQTReady {
-		bool IsReady();
-		bool IsDisplayed();
-	}
-
-	public class TerrainQuadTreeNode<T> where T : TQTReady
+	public class TerrainQuadTreeNode<T>
 	{
 		public int X { get; set; }
 		public int Y { get; set; }
@@ -60,22 +55,22 @@ namespace TerrainGenerator
 			return false;
 		}
 
-		public T GetAtPos(int x, int y) {
-			if (obj.IsDisplayed ()) {
+		public T GetAtPos(int x, int y, TerrainQuadTree<T>.Keep c) {
+			if (c(this)) {
 				return obj;
 			}
 			if (Splitted) {
 				if (x < X + SZ / 2) {
 					if (y < Y + SZ / 2) {
-						return TL.GetAtPos (x, y);
+						return TL.GetAtPos (x, y, c);
 					} else {
-						return BL.GetAtPos (x, y);
+						return BL.GetAtPos (x, y, c);
 					}
 				} else {
 					if (y < Y + SZ / 2) {
-						return TR.GetAtPos (x, y);
+						return TR.GetAtPos (x, y, c);
 					} else {
-						return BR.GetAtPos (x, y);
+						return BR.GetAtPos (x, y, c);
 					}
 				}
 			}
@@ -101,64 +96,32 @@ namespace TerrainGenerator
 			return ret;
 		}
 
-		public System.Collections.Generic.IEnumerable<TerrainQuadTreeNode<T>> Enumerator {
-			get {
-				if (Splitted && SZ > 1) {
-					foreach (TerrainQuadTreeNode<T> tqn in TL.Enumerator) {
-						yield return tqn;
-					}
-					foreach (TerrainQuadTreeNode<T> tqn in TR.Enumerator) {
-						yield return tqn;
-					}
-					foreach (TerrainQuadTreeNode<T> tqn in BL.Enumerator) {
-						yield return tqn;
-					}
-					foreach (TerrainQuadTreeNode<T> tqn in BR.Enumerator) {
-						yield return tqn;
-					}
-				} else {
-					yield return this;
-				}
+		public System.Collections.Generic.IEnumerable<TerrainQuadTreeNode<T>> Enumerate(TerrainQuadTree<T>.Keep c) {
+			if (c (this)) {
+				yield return this;
 			}
-		}
-
-		public System.Collections.Generic.IEnumerable<TerrainQuadTreeNode<T>> ReadyEnumerator {
-			get {
-				if (Splitted && SZ > 1) {
-					if (!obj.IsReady() || (TL.obj.IsReady () &&
-					    TR.obj.IsReady () &&
-					    BL.obj.IsReady () &&
-						BR.obj.IsReady ())) {
-						foreach (TerrainQuadTreeNode<T> tqn in TL.ReadyEnumerator) {
-							yield return tqn;
-						}
-						foreach (TerrainQuadTreeNode<T> tqn in TR.ReadyEnumerator) {
-							yield return tqn;
-						}
-						foreach (TerrainQuadTreeNode<T> tqn in BL.ReadyEnumerator) {
-							yield return tqn;
-						}
-						foreach (TerrainQuadTreeNode<T> tqn in BR.ReadyEnumerator) {
-							yield return tqn;
-						}
-					} else {
-						if (obj.IsReady ()) {
-							yield return this;
-						}
-					}
-				} else {
-					if (obj.IsReady ()) {
-						yield return this;
-					}
+			if (Splitted && SZ > 1) {
+				foreach (TerrainQuadTreeNode<T> tqn in TL.Enumerate(c)) {
+					yield return tqn;
+				}
+				foreach (TerrainQuadTreeNode<T> tqn in TR.Enumerate(c)) {
+					yield return tqn;
+				}
+				foreach (TerrainQuadTreeNode<T> tqn in BL.Enumerate(c)) {
+					yield return tqn;
+				}
+				foreach (TerrainQuadTreeNode<T> tqn in BR.Enumerate(c)) {
+					yield return tqn;
 				}
 			}
 		}
 	}
 
-	public class TerrainQuadTree<T> where T : TQTReady
+	public class TerrainQuadTree<T>
 	{
 		public int SZ { get; }
 		public delegate T CreateTerrainQuadTreeNodeElement(TerrainQuadTreeNode<T> node);
+		public delegate bool Keep(TerrainQuadTreeNode<T> node);
 		CreateTerrainQuadTreeNodeElement creator;
 		public TerrainQuadTreeNode<T> root;
 
@@ -173,11 +136,11 @@ namespace TerrainGenerator
 			return root == null;
 		}
 
-		public T GetAtPos(int x, int y) {
+		public T GetAtPos(int x, int y, Keep c) {
 			if (x < - root.SZ / 2 || x > root.SZ / 2 || y < - root.SZ / 2 || y > root.SZ / 2) {
 				throw new System.IndexOutOfRangeException();
 			}
-			return root.GetAtPos(x, y);
+			return root.GetAtPos(x, y, c);
 		}
 
 		public bool adapt(int x, int y) {
@@ -193,19 +156,9 @@ namespace TerrainGenerator
 			return ret;
 		}
 
-		public System.Collections.Generic.IEnumerable<TerrainQuadTreeNode<T>> Enumerator {
-			get {
-				foreach (TerrainQuadTreeNode<T> tqn in root.Enumerator) {
-					yield return tqn;
-				}
-			}
-		}
-
-		public System.Collections.Generic.IEnumerable<TerrainQuadTreeNode<T>> ReadyEnumerator {
-			get {
-				foreach (TerrainQuadTreeNode<T> tqn in root.ReadyEnumerator) {
-					yield return tqn;
-				}
+		public System.Collections.Generic.IEnumerable<TerrainQuadTreeNode<T>> Enumerate(Keep c) {
+			foreach (TerrainQuadTreeNode<T> tqn in root.Enumerate(c)) {
+				yield return tqn;
 			}
 		}
 	}

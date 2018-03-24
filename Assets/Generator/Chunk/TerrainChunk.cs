@@ -5,7 +5,7 @@ using System.Threading;
 
 namespace TerrainGenerator
 {
-	public class TerrainChunk : TQTReady
+	public class TerrainChunk
     {
         public Vector2i Position { get; private set; }
 
@@ -116,6 +116,13 @@ namespace TerrainGenerator
 			}
 		}
 
+		public bool HaveACacheOnDisk() {
+			string fpath = CachePath + "/" + NoiseProvider.getFolder ();
+			fpath += "/" + Position.Res.ToString ();
+			fpath += "/" + Position.X.ToString() + "_" + Position.Z.ToString () + ".raw";
+			return File.Exists (fpath);
+		}
+
 		public void StartGenerateHeightmap() {
 			if (thread == null) {
 				thread = new Thread (GenerateHeightmap);
@@ -164,7 +171,7 @@ namespace TerrainGenerator
 			if (!loaded) {
 				for (var zRes = 0; zRes < Settings.HeightmapResolution; zRes++) {
 					for (var xRes = 0; xRes < Settings.HeightmapResolution; xRes++) {
-						if (false && parent != null && parent.Heightmap != null && xRes % 2 == 0 && zRes % 2 == 0) {
+						if (parent != null && parent.Heightmap != null && xRes % 2 == 0 && zRes % 2 == 0) {
 							heightmap [zRes, xRes] = parent.Heightmap [zRes / 2 + zDecal, xRes / 2 + xDecal];
 						} else {
 							double xCoordinate = (double)Position.X / Position.Res + (double)xRes / ((double)Settings.HeightmapResolution - 1);
@@ -188,10 +195,6 @@ namespace TerrainGenerator
 			}
         }
 
-		public bool CanBeReady() {
-			return IsHeightmapReady ();
-		}
-
 		public bool IsPreHeightmapReady()
 		{
 			lock (HeightmapThreadLockObject) {
@@ -206,8 +209,9 @@ namespace TerrainGenerator
 			}
         }
 
-		public bool IsReady() {
-			return IsHeightmapReady ();
+		public bool IsConstructing()
+		{
+			return thread != null && ! IsHeightmapReady();
 		}
 
 		public bool IsDisplayed() {
@@ -225,7 +229,7 @@ namespace TerrainGenerator
 
         public void CreateTerrain()
         {
-			//Debug.Log ("CreateTerrain(): " + Position);
+			Debug.Log ("CreateTerrain(): " + Position);
             Data = new TerrainData();
             Data.heightmapResolution = Settings.HeightmapResolution;
             Data.alphamapResolution = Settings.AlphamapResolution;
@@ -318,28 +322,12 @@ namespace TerrainGenerator
 
         #region Chunk removal
 
-		public bool CanBeRemoved() {
-			if (TQTNode != null) {
-				if (TQTNode.Splitted) {
-					if (TQTNode.TL.obj.IsHeightmapReady () &&
-					    TQTNode.TR.obj.IsHeightmapReady () &&
-					    TQTNode.BL.obj.IsHeightmapReady () &&
-					    TQTNode.BR.obj.IsHeightmapReady ()) {
-						return true;
-					}
-					return false;
-				}
-				return true;
-			}
-			return true;
-		}
-
         public void Remove()
         {
 			if (TQTNode == null) {
 				Delete ();
 			} else {
-				//Debug.Log ("Remove(): " + Position);
+				Debug.Log ("Remove(): " + Position);
 				if (Neighborhood.XDown != null) {
 					Neighborhood.XDown.RemoveFromNeighborhood (this);
 					Neighborhood.XDown = null;
@@ -374,7 +362,7 @@ namespace TerrainGenerator
 				thread = null;
 			}
 
-			//Debug.Log ("Delete(): " + Position);
+			Debug.Log ("Delete(): " + Position);
 			lock (HeightmapThreadLockObject) {
 				Heightmap = null;
 			}
@@ -465,7 +453,7 @@ namespace TerrainGenerator
 
 				//Update HeightMap Data for part without neighbors.
 				//reset to default
-				bool debug = true;
+				bool debug = false;
 
 				lock (HeightmapThreadLockObject) {
 					if (! debug) {
