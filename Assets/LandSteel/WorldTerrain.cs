@@ -2,7 +2,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityStandardAssets.Characters.FirstPerson;
 using TerrainGenerator;
 
 public class WorldTerrain : MonoBehaviour {
@@ -23,12 +22,15 @@ public class WorldTerrain : MonoBehaviour {
 	// Use this for initialization
 	void Start () {
 		//Debug.Log("WorldTerrain::Awake()");
-		Generator.Set (seed, earthFactor, Radius, true, 3000, CachePath);
+		Generator.Set (seed, earthFactor, Radius, false, 3000, CachePath);
 	}
 
 	// Update is called once per frame
 	void Update () {
-		Vector3 worldPos = Character.transform.position;
-		Generator.UpdateTerrain(worldPos, Radius);
+		// Update only if the current scene is rendered
+		if (Camera.main.name == "Ethan Camera") {
+			Vector3 worldPos = Character.transform.position;
+			Generator.UpdateTerrain (worldPos, Radius);
+		}
 	}
 }

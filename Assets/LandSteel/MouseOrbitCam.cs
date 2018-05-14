@@ -13,6 +13,7 @@ public class MouseOrbitCam : MonoBehaviour {
 	public float distanceMin = .5f;
 	public float distanceMax = 15f;
 	public float smoothTime = 2f;
+	public bool roundRotationAxis = false;
 	float rotationYAxis = 0.0f;
 	float rotationXAxis = 0.0f;
 	float velocityX = 0.0f;
@@ -41,6 +42,14 @@ public class MouseOrbitCam : MonoBehaviour {
 			rotationYAxis += velocityX;
 			rotationXAxis -= velocityY;
 			rotationXAxis = ClampAngle(rotationXAxis, yMinLimit, yMaxLimit);
+
+			if (roundRotationAxis) {
+				// XAxis is latitude and YAxis is longitude
+				// We want an Integer value in degree
+				rotationXAxis = Mathf.Round (rotationXAxis);
+				rotationYAxis = Mathf.Round (rotationYAxis);
+			}
+
 			//Quaternion fromRotation = Quaternion.Euler(transform.rotation.eulerAngles.x, transform.rotation.eulerAngles.y, 0);
 			Quaternion toRotation = Quaternion.Euler(rotationXAxis, rotationYAxis, 0);
 			Quaternion rotation = toRotation;

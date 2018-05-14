@@ -7,7 +7,18 @@ using TerrainGenerator;
 
 public class SphereMapTexture : MonoBehaviour {
 
-	public int seed = 0;
+	public WorldTerrain world;
+
+	public Color color = Color.magenta;
+	public float width = 0.05f;
+	public float radius = 5.001f;
+	public Shader shader = null;
+	public Material mat = null;
+
+	private float currentLat = 0.0f;
+	private LineRenderer lineRenderer;
+	private int nbthreads = 1;
+	private bool isOnScreen = false;
 	private Color[] TextureData;
 	private object TextureDataLockObject;
 
@@ -17,23 +28,36 @@ public class SphereMapTexture : MonoBehaviour {
 
 	private Dictionary<double, Color> gradients;
 
+	private Thread thread;
+	private List<Thread> subthreads;
+
 	NoiseProvider np;
+
+	private class ThreadTextureParam {
+		public int xstart;
+		public int nb;
+		public int texl;
+		public int y;
+		public double lat;
+
+		public ThreadTextureParam(int pxstart, int pnb, int ptexl, int py, double plat) {
+			xstart = pxstart;
+			nb = pnb;
+			texl = ptexl;
+			y = py;
+			lat = plat;
+		}
+	}
 
 	// Use this for initialization
 	void Start () {
+		nbthreads = SystemInfo.processorCount;
+		subthreads = new List<Thread> ();
 		TextureDataLockObject = new object ();
 		TextureData = null;
 		TextureDataReadyLockObject = new object ();
 		TextureDataReady = null; 
 		ResReady = 0;
-
-		double earthFactor = 1;
-		double r = 6400000 * earthFactor; //earth
-		double m = 10000 * earthFactor; // max flight height
-		double undersee = -10000 * earthFactor;
-
-		//on va calculer la denivellation sur le radius
-		np = new NoiseProvider(seed, r, m, undersee, undersee, m);
 
 		gradients = new Dictionary<double, Color> ();
 		gradients.Add (-16384.0, new Color (  3.0f/255.0f,  29.0f/255.0f,  63.0f/255.0f));
@@ -47,7 +71,34 @@ public class SphereMapTexture : MonoBehaviour {
 		gradients.Add (6144.0,   new Color (128.0f/255.0f, 255.0f/255.0f, 255.0f/255.0f));
 		gradients.Add (16384.0,  new Color (  0.0f/255.0f,   0.0f/255.0f, 255.0f/255.0f));
 
-		var thread = new Thread(GenerateTextureData);
+		if (mat == null) {
+			if (shader == null) {
+				shader = Shader.Find ("Particles/Additive");
+			}
+			mat = new Material (shader);
+		}
+		lineRenderer = gameObject.AddComponent<LineRenderer>();
+		lineRenderer.material = mat;
+		lineRenderer.startWidth = width;
+		lineRenderer.endWidth = width;
+		lineRenderer.positionCount = 360;
+		lineRenderer.startColor = color;
+		lineRenderer.endColor = color;
+		lineRenderer.loop = true;
+
+		StartGenerateTexture ();
+	}
+
+	void StartGenerateTexture() {
+		//on va calculer la denivellation sur le radius
+		double earthFactor = world.earthFactor;
+		double r = 6400000 * earthFactor;
+		double m = 10000 * earthFactor;
+		double undersee = -10000 * earthFactor;
+
+		np = new NoiseProvider(world.seed, r, m, undersee, undersee, m);
+
+		thread = new Thread(GenerateTextureData);
 		thread.Start();
 	}
 
@@ -78,11 +129,29 @@ public class SphereMapTexture : MonoBehaviour {
 				}
 				for (int y = 0; y < texh; ++y) {
 					double lat = 90 - 180 * (double)y / (double)texh;
-					for (int x = 0; x < texl; ++x) {
-						double lon = 360 * (double)x / (double)texl;
-						double height = np.HeightAtLatLon (lat, lon);
-						TextureData[x + y * texl] = GetColor(height);
+					currentLat = - (float)lat;
+					var nnbthreads = nbthreads;
+					if (texl < nbthreads * 50) {
+						nnbthreads = 1;
+					} else {
+						while (! isOnScreen) {
+							Thread.Sleep (1000);
+						}
 					}
+					for (int i = 0; i < nnbthreads; ++i) {
+						//TODO: An optimized way is to create a pool and use it with signals, it will avoid time consuming Thread creation/deletion.
+						var thread = new Thread (ColorizeTextureData);
+						var param = new ThreadTextureParam (i * texl / nnbthreads, texl / nnbthreads, texl, y, lat);
+						thread.Start (param);
+						subthreads.Add (thread);
+					}
+
+					foreach (var thread in subthreads) {
+						thread.Join ();
+					}
+
+					subthreads.Clear ();
+
 					lock (TextureDataReadyLockObject) {
 						ResReady = Res;
 						TextureDataReady = TextureData;
@@ -91,6 +160,16 @@ public class SphereMapTexture : MonoBehaviour {
 			}
 		}
 		Debug.Log ("Finished.");
+	}
+
+	private void ColorizeTextureData(object threadparam) {
+		var param = (ThreadTextureParam)threadparam;
+		NoiseProvider nnp = new NoiseProvider (np);
+		for (int x = param.xstart; x < param.xstart + param.nb && x < param.texl; ++x) {
+			double lon = 360 * (double)x / (double)param.texl;
+			double height = nnp.HeightAtLatLon (param.lat, lon);
+			TextureData[x + param.y * param.texl] = GetColor(height);
+		}
 	}
 
 	Color GetColor(double height) {
@@ -113,6 +192,7 @@ public class SphereMapTexture : MonoBehaviour {
 
 	// Update is called once per frame
 	void Update () {
+		isOnScreen = (Camera.main.name == "Map Camera");
 		lock (TextureDataReadyLockObject) {
 			if (TextureDataReady != null) {
 				int texh = (int)Math.Pow (2, ResReady);
@@ -125,5 +205,28 @@ public class SphereMapTexture : MonoBehaviour {
 				TextureDataReady = null;
 			}
 		}
+
+		int i = 0;
+		float lat = currentLat;
+		for (int lon = 0; lon < 360; ++lon) {
+			//lat = phi (-90 -> 90)
+			//lon = teta (0 -> 360)
+			double phi = Math.PI * (90 - lat) / 180; //coordonnée sphérique et radian
+			double teta = Math.PI * lon / 180;
+			double sinphi = Math.Sin (phi);
+			double dx = sinphi * Math.Cos (teta);
+			double dy = sinphi * Math.Sin (teta);
+			double dz = Math.Cos (phi);
+			Vector3 pos = new Vector3((float)dx, (float)dz, (float)dy) * radius;
+			lineRenderer.SetPosition (i, pos + gameObject.transform.position);
+			++i;
+		}
+	}
+
+	void OnDestroy() {
+		foreach (var thread in subthreads) {
+			thread.Interrupt ();
+		}
+		thread.Interrupt ();
 	}
 }

@@ -8,8 +8,9 @@ namespace TerrainGenerator
     public class TerrainChunkGenerator : MonoBehaviour
     {
         public Material TerrainMaterial;
+		public GameObject TreePrefab;
 
-        public Texture2D FlatTexture;
+		public Texture2D FlatTexture;
         public Texture2D SteepTexture;
 
 		private Dictionary<int, TerrainChunkSettings> Settings;
@@ -96,7 +97,7 @@ namespace TerrainGenerator
 
 			Settings = new Dictionary<int, TerrainChunkSettings> ();
 			for (int res = 0; res <= Depth; ++res) {
-				Settings[(int)Math.Pow(2, res)] = new TerrainChunkSettings (maxChunk, maxChunk, chunkSz * (int)Math.Pow(2, res), chunkSz, (int)(denivel_max - denivel_min), FlatTexture, SteepTexture, TerrainMaterial);
+				Settings[(int)Math.Pow(2, res)] = new TerrainChunkSettings (maxChunk, maxChunk, chunkSz * (int)Math.Pow(2, res), chunkSz, (int)(denivel_max - denivel_min), FlatTexture, SteepTexture, TerrainMaterial, TreePrefab);
 			}
 		}
 
@@ -151,7 +152,7 @@ namespace TerrainGenerator
 				}
 				foreach (var chunk in LoadedChunks.Except (newall).ToList()) {
 					chunk.Value.Remove ();
-					SetChunkNeighborhood (chunk.Value);
+					//SetChunkNeighborhood (chunk.Value);
 					LoadedChunks.Remove (chunk.Key);
 					needUpdateNeighbors = true;
 				}
@@ -159,11 +160,7 @@ namespace TerrainGenerator
 			if (r > 0) {
 				var NotToConstruct = new List<TerrainChunk>();
 				foreach (var node in QT.Enumerate(KeepAllNotCreated)) {
-					if (node.obj.HaveACacheOnDisk ()) {
-						node.obj.GenerateHeightmap ();
-					} else {
-						NotToConstruct.Add (node.obj);
-					}
+					NotToConstruct.Add (node.obj);
 				}
 				NotToConstruct.Sort ((a, b) => (chunkPosition.DistanceTo(a.Position).CompareTo(chunkPosition.DistanceTo(b.Position))));
 				foreach (var tc in NotToConstruct.Take(SystemInfo.processorCount - 1)) {
@@ -173,16 +170,31 @@ namespace TerrainGenerator
 				}
 
 				foreach (var node in QT.Enumerate(KeepAllReady)) {
-					LoadedChunks.Add (node.obj.Position, node.obj);
 					node.obj.CreateTerrain ();
-					SetChunkNeighborhood (node.obj);
+					//SetChunkNeighborhood (node.obj);
+					LoadedChunks.Add (node.obj.Position, node.obj);
 					needUpdateNeighbors = true;
 				}
 			}
+
 			if (needUpdateNeighbors) {
+				foreach (var chunk in LoadedChunks) {
+					SetChunkNeighborhood (chunk.Value);
+				}
 				UpdateAllChunkNeighbors ();
 			}
         }
+
+		void OnDrawGizmos() {
+			if (QT != null) {
+				foreach (var node in QT.Enumerate(KeepDisplayed)) {
+					Vector3 size = node.obj.Terrain.terrainData.size;
+					Vector3 center = node.obj.TerrainGameObject.transform.position + size / 2;
+					Gizmos.color = Color.white;
+					Gizmos.DrawWireCube(center, size);
+				}
+			}
+		}
 
 		private void SetChunkNeighborhood(TerrainChunk chunk)
 		{
@@ -194,12 +206,48 @@ namespace TerrainGenerator
 			//only connect same Resolution chunck
 			//try no neighbors
 			LoadedChunks.TryGetValue(new Vector2i(chunk.Position.X + chunk.Position.Res, chunk.Position.Z, chunk.Position.Res), out xUp);
+			if (xUp == null) {
+				if ((chunk.Position.X % (chunk.Position.Res * 2)) != 0) {
+					var NPos = new Vector2i ();
+					NPos.X = chunk.Position.X + chunk.Position.Res;
+					NPos.Z = (chunk.Position.Z / (chunk.Position.Res * 2)) * (chunk.Position.Res * 2);
+					NPos.Res = chunk.Position.Res * 2;
+					LoadedChunks.TryGetValue (NPos, out xUp);
+				}
+			}
+
 			LoadedChunks.TryGetValue(new Vector2i(chunk.Position.X - chunk.Position.Res, chunk.Position.Z, chunk.Position.Res), out xDown);
+			if (xDown == null) {
+				if ((chunk.Position.X % (chunk.Position.Res * 2)) == 0) {
+					var NPos = new Vector2i ();
+					NPos.X = chunk.Position.X - chunk.Position.Res * 2;
+					NPos.Z = (chunk.Position.Z / (chunk.Position.Res * 2)) * (chunk.Position.Res * 2);
+					NPos.Res = chunk.Position.Res * 2;
+					LoadedChunks.TryGetValue (NPos, out xDown);
+				}
+			}
+
 			LoadedChunks.TryGetValue(new Vector2i(chunk.Position.X, chunk.Position.Z + chunk.Position.Res, chunk.Position.Res), out zUp);
+			if (zUp == null) {
+				if ((chunk.Position.Z % (chunk.Position.Res * 2)) != 0) {
+					var NPos = new Vector2i ();
+					NPos.X = (chunk.Position.X / (chunk.Position.Res * 2)) * (chunk.Position.Res * 2);
+					NPos.Z = chunk.Position.Z + chunk.Position.Res;
+					NPos.Res = chunk.Position.Res * 2;
+					LoadedChunks.TryGetValue (NPos, out zUp);
+				}
+			}
+
 			LoadedChunks.TryGetValue(new Vector2i(chunk.Position.X, chunk.Position.Z - chunk.Position.Res, chunk.Position.Res), out zDown);
-
-			//Debug.Log ("SetChunkNeighborhood" + chunk.Position + ": xd=" + xDown + " xu=" + xUp + " zd=" + zDown + " zu=" + zUp);
-
+			if (zDown == null) {
+				if ((chunk.Position.Z % (chunk.Position.Res * 2)) == 0) {
+					var NPos = new Vector2i ();
+					NPos.X = (chunk.Position.X / (chunk.Position.Res * 2)) * (chunk.Position.Res * 2);
+					NPos.Z = chunk.Position.Z - chunk.Position.Res * 2;
+					NPos.Res = chunk.Position.Res * 2;
+					LoadedChunks.TryGetValue (NPos, out zDown);
+				}
+			}
 
 			if (xUp != null) {
 				chunk.SetNeighbors (xUp, TerrainNeighbor.XUp);
@@ -232,7 +280,7 @@ namespace TerrainGenerator
         {
 			var x = (int)Mathf.Floor(worldPosition.x / chunkSz);
 			var z = (int)Mathf.Floor(worldPosition.z / chunkSz);
-			if (!QT.empty ()) {
+			if (QT != null && !QT.empty ()) {
 				var node = QT.GetAtPos (x, z, KeepDisplayed);
 				return node.Position;
 			} else {

@@ -1,6 +1,8 @@
-﻿namespace TerrainGenerator
+﻿using System;
+
+namespace TerrainGenerator
 {
-    public class Vector2i
+	public class Vector2i
     {
         public int X { get; set; }
 
@@ -46,5 +48,10 @@
         {
 			return "[" + X + "," + Z + "," + Res + "]";
         }
+
+		public Vector2i Clone() {
+			return new Vector2i (this.X, this.Z, this.Res);
+		}
+
     }
 }

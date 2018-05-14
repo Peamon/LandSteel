@@ -8,7 +8,7 @@ namespace TerrainGenerator
     public class NoiseProvider : INoiseProvider
     {
 		private int pseed;
-		private double r;
+		public double r;
 		private double zero;
 		private double upper;
 		private double maxh;
@@ -67,12 +67,14 @@ namespace TerrainGenerator
 			decal = unscaledFinalPlanet.GetValue (dx, dy, dz);
 			//decal = PerlinNoiseGenerator.GetValue(dx, dy, dz);
 			//}
+			/*
 			if (decal < -1.0) {
 				decal = -1.0;
 			}
 			if (decal > 1.0) {
 				decal = 1.0;
 			}
+			*/
 			double h = 0;
 			if (decal >= 0) {
 				h = decal * maxh;
